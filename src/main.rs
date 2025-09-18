@@ -69,14 +69,15 @@ impl Command {
                 else {
                     let mut found: bool = false;
                     let mut found_path = PathBuf::new();
+
                     if let Ok(path_values) = env::var("PATH") {
                         let paths: Vec<&str> = path_values.split(':').collect();
                         for p in paths {
                             let full_path = Path::new(p).join(&cmd);
-                                if full_path.exists() && full_path.is_executable() {
-                                    found = true;
-                                    found_path = full_path;
-                                    break
+                            if full_path.exists() && full_path.is_executable() {
+                                found = true;
+                                found_path = full_path;
+                                break
                         }
                     }
                 }
