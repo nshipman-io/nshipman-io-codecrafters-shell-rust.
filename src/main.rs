@@ -1,4 +1,7 @@
 use std::io::{self, Write};
+use std::env;
+use std::path::{Path, PathBuf};
+use is_executable::IsExecutable;
 
 enum Command {
     Exit(Option<i32>),
@@ -12,15 +15,9 @@ struct Builtin {
 
 impl Command {
     const BUILTINS: &'static [Builtin] = &[
-    Builtin {
-        name: "exit",
-    },
-    Builtin {
-        name: "echo",
-    },
-    Builtin {
-        name: "type",
-    }
+        Builtin { name: "exit", },
+        Builtin { name: "echo", },
+        Builtin { name: "type", }
     ];
 
     fn is_builtin(name: &str) -> bool {
@@ -70,12 +67,30 @@ impl Command {
                    println!("{} is a shell builtin", cmd);
                 }
                 else {
-                    println!("{}: not found", cmd);
+                    let mut found: bool = false;
+                    let mut found_path = PathBuf::new();
+                    if let Ok(path_values) = env::var("PATH") {
+                        let paths: Vec<&str> = path_values.split(':').collect();
+                        for p in paths {
+                            let full_path = Path::new(p).join(&cmd);
+                                if full_path.exists() && full_path.is_executable() {
+                                    found = true;
+                                    found_path = full_path;
+                                    break
+                        }
+                    }
+                }
+                    if found {
+                        println!("{} is {}", cmd, found_path.display());
+                    } else {
+                        println!("{}: not found", cmd);
+                    }
                 }
             }
         }
     }
 }
+
 fn main() {
     loop {
         print!("$ ");
