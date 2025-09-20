@@ -1,4 +1,4 @@
-use std::io::{self, Write};
+use std::io::{self, ErrorKind, Write};
 use std::env;
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -10,6 +10,7 @@ enum Commands {
     Type(String),
     External(String, Vec<String>),
     Pwd(),
+    Cd(String),
 }
 
 struct Builtin {
@@ -22,6 +23,7 @@ impl Commands {
         Builtin { name: "echo", },
         Builtin { name: "type", },
         Builtin { name: "pwd", },
+        Builtin { name: "cd", },
     ];
 
     fn is_builtin(name: &str) -> bool {
@@ -52,7 +54,16 @@ impl Commands {
                     Some(cmd) => Ok(Commands::Type(cmd.to_string())),
                     None => Err("type: missing argument".to_string())
                 }
-            }
+            },
+            "cd" => {
+                match args.get(0) {
+                    Some(path) => Ok(Commands::Cd(path.to_string())),
+                    None => {
+                        let path = "~";
+                        Ok(Commands::Cd(path.to_string()))
+                        }
+                    }
+                },
             "pwd" => Ok(Commands::Pwd()),
             _ => {
                 let args = args.iter().map(|s| s.to_string()).collect();
@@ -82,39 +93,75 @@ impl Commands {
 
             Commands::External(cmd, args) => {
                 if let Some(path) = Commands::find_cmd(&cmd) {
-                   match Command::new(&cmd)
-                       .args(&args)
-                       .env("PATH", env::var("PATH").unwrap_or_default())
-                       .status()
-                   {
-                       Ok(status) => {
-                           if !status.success() {
-                               std::process::exit(status.code().unwrap_or(1));
-                           }
-                       }
-                       Err(_) => {
-                           match Command::new(&path)
-                               .args(&args)
-                               .status()
-                           {
-                               Ok(status) => {
-                                   if !status.success() {
-                                       std::process::exit(status.code().unwrap_or(1));
-                                   }
-                               }
-                               Err(e) => {
-                                    eprintln! ("{}: {}", cmd, e);
+                    match Command::new(&cmd)
+                        .args(&args)
+                        .env("PATH", env::var("PATH").unwrap_or_default())
+                        .status()
+                    {
+                        Ok(status) => {
+                            if !status.success() {
+                                std::process::exit(status.code().unwrap_or(1));
+                            }
+                        }
+                        Err(_) => {
+                            match Command::new(&path)
+                                .args(&args)
+                                .status()
+                            {
+                                Ok(status) => {
+                                    if !status.success() {
+                                        std::process::exit(status.code().unwrap_or(1));
+                                    }
                                 }
-                           }
-                       }
-                   }
+                                Err(e) => {
+                                    eprintln!("{}: {}", cmd, e);
+                                }
+                            }
+                        }
+                    }
                 } else {
                     println!("{}: not found", cmd);
                 }
             }
-            Commands::Pwd() =>  {
-                let path = env::current_dir();
-                println!("{}", path.unwrap().display());
+            Commands::Pwd() => {
+                match env::current_dir() {
+                    Ok(path) => println!("{}", path.display()),
+                    Err(e) => {
+                        eprintln!("pwd: {}", e);
+                        std::process::exit(1);
+                    }
+                }
+            }
+
+            Commands::Cd(path) => {
+                let target = if path.starts_with("~/"){
+                   match env::var("HOME") {
+                       Ok(home) => path.replace("~", &home),
+                       Err(e) => {
+                           eprintln!("cd: HOME: {}", e);
+                           return;
+                       }
+                   }
+                } else if path == "~" {
+                    match env::var("HOME") {
+                        Ok(home) => home,
+                        Err(e) => {
+                            eprintln!("cd: HOME: {}",e );
+                            return;
+                        }
+                    }
+                } else {
+                    path.clone()
+                };
+
+                if let Err(e) = env::set_current_dir(&target) {
+                    match e.kind() {
+                        ErrorKind::NotFound => eprintln!("cd: {}: No such file or directory", target),
+                        _ => {
+                            eprintln!("cd: {}: {}", target, e);
+                        }
+                    }
+                }
             }
         }
     }
@@ -157,7 +204,5 @@ fn main() {
                 }
             }
         }
-
-
     }
 }
