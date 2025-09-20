@@ -9,6 +9,7 @@ enum Commands {
     Echo(Vec<String>),
     Type(String),
     External(String, Vec<String>),
+    Pwd(),
 }
 
 struct Builtin {
@@ -19,7 +20,8 @@ impl Commands {
     const BUILTINS: &'static [Builtin] = &[
         Builtin { name: "exit", },
         Builtin { name: "echo", },
-        Builtin { name: "type", }
+        Builtin { name: "type", },
+        Builtin { name: "pwd", },
     ];
 
     fn is_builtin(name: &str) -> bool {
@@ -51,6 +53,7 @@ impl Commands {
                     None => Err("type: missing argument".to_string())
                 }
             }
+            "pwd" => Ok(Commands::Pwd()),
             _ => {
                 let args = args.iter().map(|s| s.to_string()).collect();
                 Ok(Commands::External(cmd.to_string(), args))
@@ -108,6 +111,10 @@ impl Commands {
                 } else {
                     println!("{}: not found", cmd);
                 }
+            }
+            Commands::Pwd() =>  {
+                let path = env::current_dir();
+                println!("{}", path.unwrap().display());
             }
         }
     }
