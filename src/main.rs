@@ -14,26 +14,12 @@ enum Commands {
     Cd(String),
 }
 
-enum SpecialChar {
-    DoubleQuote, // "
-    SingleQuote, // '
-}
 
 #[derive(PartialEq)]
 enum QuoteState {
     None,
     InSingleQuote,
     InDoubleQuote,
-}
-
-impl SpecialChar {
-    fn from_char(ch: char) ->Option<SpecialChar> {
-        match ch {
-            '\'' => Some(SpecialChar::SingleQuote),
-            '"' => Some(SpecialChar::DoubleQuote),
-            _ => None
-        }
-    }
 }
 
 struct Builtin {
@@ -125,9 +111,9 @@ impl Commands {
                         .status()
                     {
                         Ok(status) => {
-                            if !status.success() {
-                                std::process::exit(status.code().unwrap_or(1));
-                            }
+                            // if !status.success() {
+                            //     std::process::exit(status.code().unwrap_or(1));
+                            // }
                         }
                         Err(_) => {
                             match Command::new(&path)
@@ -135,9 +121,9 @@ impl Commands {
                                 .status()
                             {
                                 Ok(status) => {
-                                    if !status.success() {
-                                        std::process::exit(status.code().unwrap_or(1));
-                                    }
+                                    // if !status.success() {
+                                    //     std::process::exit(status.code().unwrap_or(1));
+                                    // }
                                 }
                                 Err(e) => {
                                     eprintln!("{}: {}", cmd, e);
@@ -221,7 +207,8 @@ fn tokenize(input: &str) -> Vec<String> {
     let mut state = QuoteState::None;
     let mut escape_next = false;
 
-    for ch in input.chars() {
+    let mut chars = input.chars().peekable();
+    while let Some(ch) = chars.next() {
         if escape_next {
             current_token.push(ch);
             escape_next = false;
@@ -230,6 +217,22 @@ fn tokenize(input: &str) -> Vec<String> {
 
         if ch == '\\' && state == QuoteState::None {
             escape_next = true;
+            continue;
+        }
+
+        // if ch == '\\' && state == QuoteState::InDoubleQuote && !escape_next {
+        //     escape_next = true;
+        //     continue;
+        // }
+
+        if ch == '\\' && state == QuoteState::InDoubleQuote {
+            if let Some(&next_ch) = chars.peek() {
+                if next_ch == '"' || next_ch == '\\' {
+                    escape_next = true;
+                    continue;
+                }
+            }
+            current_token.push(ch);
             continue;
         }
 
