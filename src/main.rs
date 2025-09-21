@@ -227,9 +227,6 @@ fn tokenize(input: &str) -> Vec<String> {
         } else if ch == '\'' && state == QuoteState::InSingleQuote {
             state = QuoteState::None;
             continue;
-        } else if ch == '\'' && state == QuoteState::InDoubleQuote {
-            current_token.push(ch);
-            continue;
         }
 
         if ch == '\"' && state ==QuoteState::None {
@@ -245,7 +242,7 @@ fn tokenize(input: &str) -> Vec<String> {
 
         if ch == ' ' && state == QuoteState::None {
             if !current_token.is_empty() {
-                tokens.push(current_token.clone().trim().to_string());
+                tokens.push(current_token.clone().to_string());
                 current_token.clear();
             }
             continue;
@@ -254,7 +251,7 @@ fn tokenize(input: &str) -> Vec<String> {
 
     }
     if !current_token.is_empty() {
-        tokens.push(current_token.clone().trim().to_string());
+        tokens.push(current_token.trim().to_string());
     }
     tokens
 }
