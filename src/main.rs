@@ -227,6 +227,20 @@ fn tokenize(input: &str) -> Vec<String> {
         } else if ch == '\'' && state == QuoteState::InSingleQuote {
             state = QuoteState::None;
             continue;
+        } else if ch == '\'' && state == QuoteState::InDoubleQuote {
+            current_token.push(ch);
+            continue;
+        }
+
+        if ch == '\"' && state ==QuoteState::None {
+            state = QuoteState::InDoubleQuote;
+            continue;
+        } else if ch == '\"' && state == QuoteState::InDoubleQuote {
+            state = QuoteState::None;
+            continue;
+        } else if ch == '\'' && state == QuoteState::InDoubleQuote {
+            current_token.push(ch);
+            continue;
         }
 
         if ch == ' ' && state == QuoteState::None {
