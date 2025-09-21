@@ -3,6 +3,7 @@ use std::env;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use is_executable::IsExecutable;
+use crate::Commands::Pwd;
 
 enum Commands {
     Exit(Option<i32>),
@@ -218,9 +219,20 @@ fn tokenize(input: &str) -> Vec<String> {
     let mut tokens = Vec::new();
     let mut current_token = String::new();
     let mut state = QuoteState::None;
+    let mut escape_next = false;
 
     for ch in input.chars() {
-        // Handle state when a quote is left open
+        if escape_next {
+            current_token.push(ch);
+            escape_next = false;
+            continue;
+        }
+
+        if ch == '\\' && state == QuoteState::None {
+            escape_next = true;
+            continue;
+        }
+
         if ch == '\'' && state == QuoteState::None {
             state = QuoteState::InSingleQuote;
             continue;
@@ -229,27 +241,25 @@ fn tokenize(input: &str) -> Vec<String> {
             continue;
         }
 
-        if ch == '\"' && state ==QuoteState::None {
+        if ch == '"' && state == QuoteState::None {
             state = QuoteState::InDoubleQuote;
             continue;
-        } else if ch == '\"' && state == QuoteState::InDoubleQuote {
+        } else if ch == '"' && state == QuoteState::InDoubleQuote {
             state = QuoteState::None;
-            continue;
-        } else if ch == '\'' && state == QuoteState::InDoubleQuote {
-            current_token.push(ch);
             continue;
         }
 
         if ch == ' ' && state == QuoteState::None {
             if !current_token.is_empty() {
-                tokens.push(current_token.clone().to_string());
+                tokens.push(current_token.clone());
                 current_token.clear();
             }
             continue;
         }
-        current_token.push(ch);
 
+        current_token.push(ch);
     }
+
     if !current_token.is_empty() {
         tokens.push(current_token.trim().to_string());
     }
