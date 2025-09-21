@@ -13,6 +13,28 @@ enum Commands {
     Cd(String),
 }
 
+enum SpecialChar {
+    DoubleQuote, // "
+    SingleQuote, // '
+}
+
+#[derive(PartialEq)]
+enum QuoteState {
+    None,
+    InSingleQuote,
+    InDoubleQuote,
+}
+
+impl SpecialChar {
+    fn from_char(ch: char) ->Option<SpecialChar> {
+        match ch {
+            '\'' => Some(SpecialChar::SingleQuote),
+            '"' => Some(SpecialChar::DoubleQuote),
+            _ => None
+        }
+    }
+}
+
 struct Builtin {
     name: &'static str,
 }
@@ -31,14 +53,17 @@ impl Commands {
     }
 
     fn parse(input: &str) -> Result<Commands, String> {
-        let parts: Vec<&str> = input.trim().split_whitespace().collect();
+        //let parts: Vec<&str> = input.trim().split_whitespace().collect();
+        //let parts: Vec<String> = input.split_whitespace().map(|s| s.to_string()).collect();
+        let parts: Vec<String> = tokenize(input);
         if parts.is_empty() {
             return Err("".to_string());
         }
+        // TODO: Construct the
 
-        let cmd = parts[0];
+        let cmd = &parts[0];
         let args = &parts[1..];
-        match cmd {
+        match cmd.as_str() {
             "exit" => {
                 let code = args.get(0)
                     .and_then(|s| s.parse::<i32>().ok());
@@ -187,6 +212,37 @@ impl Commands {
             None
         }
     }
+}
+
+fn tokenize(input: &str) -> Vec<String> {
+    let mut tokens = Vec::new();
+    let mut current_token = String::new();
+    let mut state = QuoteState::None;
+
+    for ch in input.chars() {
+        // Handle state when a quote is left open
+        if ch == '\'' && state == QuoteState::None {
+            state = QuoteState::InSingleQuote;
+            continue;
+        } else if ch == '\'' && state == QuoteState::InSingleQuote {
+            state = QuoteState::None;
+            continue;
+        }
+
+        if ch == ' ' && state == QuoteState::None {
+            if !current_token.is_empty() {
+                tokens.push(current_token.clone().trim().to_string());
+                current_token.clear();
+            }
+            continue;
+        }
+        current_token.push(ch);
+
+    }
+    if !current_token.is_empty() {
+        tokens.push(current_token.clone().trim().to_string());
+    }
+    tokens
 }
 
 fn main() {
